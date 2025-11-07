@@ -36,14 +36,30 @@ def load_cfpb_data():
     return df
 
 # -------------------------------------------------
-# Load the two dataframes
+# Load data
 # -------------------------------------------------
 try:
-    df = load_census_data()          # financial_data equivalent
-    cfpb_df = load_cfpb_data()       # complaint_categories equivalent
+    df = load_census_data()
+    cfpb_df = load_cfpb_data()
 except Exception as e:
     st.error(f"Data loading error: {e}")
     st.stop()
+
+# -------------------------------------------------
+# Validate required columns
+# -------------------------------------------------
+required_census = ["county", "median_income", "total_complaints"]
+required_cfpb = ["Product", "complaint_count"]
+
+missing_census = [col for col in required_census if col not in df.columns]
+missing_cfpb = [col for col in required_cfpb if col not in cfpb_df.columns]
+
+if missing_census:
+    st.error(f"Missing Census columns: {missing_census}")
+    st.stop()
+
+if missing_cfpb:
+    st.warning(f"Missing CFPB columns: {missing_cfpb} – drill-down will be limited.")
 
 # -------------------------------------------------
 # Shorten product names
@@ -60,15 +76,15 @@ def shorten_category_name(name):
     }
     return mapping.get(str(name).strip(), str(name).strip())
 
-if not cfpb_df.empty and "Product" in cfpb_df.columns:
+if "Product" in cfpb_df.columns:
     cfpb_df["Product"] = cfpb_df["Product"].apply(shorten_category_name)
 
 # -------------------------------------------------
-# Extract state from county string
+# Extract state
 # -------------------------------------------------
 df["state"] = df["county"].str.extract(r",\s*([A-Za-z\s]+)$")
 if df["state"].isna().all():
-    st.warning("State names could not be parsed from the `county` column. Expected format: 'County Name, State'")
+    st.warning("State names could not be parsed from `county` column.")
 
 # -------------------------------------------------
 # Sidebar filters
@@ -86,7 +102,7 @@ county = st.sidebar.selectbox(
 )
 
 # -------------------------------------------------
-# Scatter plot – income vs. complaints
+# Scatter plot
 # -------------------------------------------------
 filtered_df = df[
     (df["median_income"] >= income_range[0]) &
@@ -105,7 +121,7 @@ fig = px.scatter(
 st.plotly_chart(fig, use_container_width=True)
 
 # -------------------------------------------------
-# Localized Complaint Drill-Down – COUNTY-ONLY
+# Localized Complaint Drill-Down – COUNTY ONLY
 # -------------------------------------------------
 st.subheader("Localized Complaint Drill-Down")
 if county != "All":
@@ -114,18 +130,15 @@ if county != "All":
         total = sel["total_complaints"].iloc[0]
         st.write(f"**{county}**: Total Complaints: **{total:,}**")
 
-        # Find any column with "county" in name
+        # Find county column
         county_col = next((c for c in cfpb_df.columns if "county" in c.lower()), None)
         county_complaints = pd.DataFrame()
 
         if county_col and county_col in cfpb_df.columns:
-            # Extract just the county name (before comma)
             county_name = county.split(",")[0].strip()
-            # Exact match using regex
             mask = cfpb_df[county_col].str.contains(f"^{county_name}$", case=False, regex=True, na=False)
             county_complaints = cfpb_df[mask]
 
-        # Show pie chart only if county-level data exists
         if not county_complaints.empty and "complaint_count" in county_complaints.columns:
             color_map = {
                 "Bank Account": "#1f77b4",
@@ -180,7 +193,7 @@ if county != "All":
                 mime="text/csv"
             )
         else:
-            st.warning(f"**No county-level complaint data** found for **{county}** in the CFPB dataset.")
+            st.warning(f"No **county-level** complaint data found for **{county}**.")
     else:
         st.write("County not found in census data.")
 else:
@@ -202,19 +215,14 @@ if county != "All" and not df[df["county"] == county].empty:
     if not peers.empty:
         st.write(f"Counties with similar income (±5% of **${sel['median_income']:,.0f}**):")
         st.dataframe(peers[["county", "median_income", "total_complaints"]])
-        st.download_button(
-            "Download Peer Counties",
-            peers.to_csv(index=False),
-            "peer_counties.csv",
-            "text/csv"
-        )
+        st.download_button("Download Peers", peers.to_csv(index=False), "peers.csv", "text/csv")
     else:
         st.write("No peer counties found.")
 else:
     st.write("Select a county to find peers.")
 
 # -------------------------------------------------
-# Vulnerability Ranking Score
+# Vulnerability Ranking
 # -------------------------------------------------
 st.subheader("Vulnerability Ranking Score")
 if county != "All" and not df[df["county"] == county].empty:
@@ -227,16 +235,10 @@ if county != "All" and not df[df["county"] == county].empty:
     state_df["rank"] = state_df["distress_score"].rank(ascending=False)
     row = state_df[state_df["county"] == county].iloc[0]
 
-    st.write(
-        f"**{county}** – Distress Score: **{row['distress_score']:.2f}** "
-        f"(Rank **{int(row['rank'])}** in **{state}**)"
-    )
-    st.write("Higher score = greater financial distress.")
-    st.dataframe(
-        state_df[["county", "median_income", "total_complaints", "distress_score", "rank"]].head(10)
-    )
+    st.write(f"**{county}** – Score: **{row['distress_score']:.2f}** (Rank **{int(row['rank'])}** in **{state}**)")
+    st.dataframe(state_df[["county", "median_income", "total_complaints", "distress_score", "rank"]].head(10))
 else:
-    st.write("Select a county to see its vulnerability ranking.")
+    st.write("Select a county to see ranking.")
 
 # -------------------------------------------------
 # Savings Goal Tracker
@@ -248,24 +250,21 @@ progress = min(saved / goal, 1.0) if goal > 0 else 0.0
 st.progress(progress)
 st.write(f"Progress: **{progress*100:.1f}%**")
 if saved >= goal and goal > 0:
-    st.success("Congratulations! You've reached your savings goal!")
+    st.success("Goal reached!")
 
 # -------------------------------------------------
 # Budget Overview
 # -------------------------------------------------
 st.subheader("Budget Overview")
-monthly_income = st.number_input("Monthly Income ($)", min_value=0.0, value=2000.0)
-monthly_expenses = st.number_input("Monthly Expenses ($)", min_value=0.0, value=1500.0)
-st.write(f"Net Monthly Savings: **${monthly_income - monthly_expenses:,.2f}**")
+income = st.number_input("Monthly Income ($)", min_value=0.0, value=2000.0)
+expenses = st.number_input("Monthly Expenses ($)", min_value=0.0, value=1500.0)
+st.write(f"Net Savings: **${income - expenses:,.2f}**")
 
 # -------------------------------------------------
 # Spending Breakdown
 # -------------------------------------------------
 st.subheader("Spending Breakdown")
-spend_cats = ["Housing", "Food", "Transport", "Other"]
-spend_vals = [
-    st.number_input(f"{c} ($)", min_value=0.0, value=100.0, key=f"spend_{c}")
-    for c in spend_cats
-]
-fig_spend = px.pie(values=spend_vals, names=spend_cats, title="Spending by Category")
-st.plotly_chart(fig_spend, use_container_width=True)
+cats = ["Housing", "Food", "Transport", "Other"]
+vals = [st.number_input(f"{c} ($)", min_value=0.0, value=100.0, key=f"spend_{c}") for c in cats]
+fig = px.pie(values=vals, names=cats, title="Spending by Category")
+st.plotly_chart(fig, use_container_width=True)
