@@ -65,7 +65,7 @@ def shorten_category_name(name):
         "Bank account or service": "Bank Account",
         "Checking or savings account": "Checking/Savings",
         "Credit card": "Credit Card",
-        "Credit card or prepaid card": "Credit/Prepaid",
+        "Credit card or prepaid card": "Card/Prepaid",
         "Credit reporting": "Credit Report",
         "Debt collection": "Debt Collection",
         "Mortgage": "Mortgage"
@@ -94,7 +94,7 @@ if not df.empty:
                      hover_data=["county"])
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- Drill-Down (Mobile-Friendly with Fallback) ---
+    # --- Drill-Down (Mobile-Friendly Simplified) ---
     st.subheader("Localized Complaint Drill-Down")
     if county != "All":
         selected_county = df[df["county"] == county]
@@ -118,25 +118,17 @@ if not df.empty:
                                  color="Product", color_discrete_map=color_map)
                 fig_pie.update_traces(
                     textinfo='percent+label',
-                    textfont_size=10,  # Further reduced for mobile
+                    textfont_size=10,  # Optimized for mobile
                     pull=[0.1 if i == county_complaints["complaint_count"].idxmax() else 0 for i in range(len(county_complaints))],
                     hovertemplate="%{label}: %{value} complaints (%{percent})"
                 )
-                # Mobile detection and layout adjustment
-                user_agent = st.get_option("browser.userAgent")
-                is_mobile = user_agent and any(mobile in user_agent.lower() for mobile in ['mobile', 'android', 'iphone'])
-                if is_mobile:
-                    fig_pie.update_layout(
-                        showlegend=False,  # Hide legend on mobile to save space
-                        margin=dict(t=20, b=20, l=20, r=20),  # Minimal margins
-                        height=300,  # Fixed height for mobile
-                    )
-                else:
-                    fig_pie.update_layout(
-                        showlegend=True,
-                        margin=dict(t=40, b=40, l=40, r=40),
-                        legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.2),
-                    )
+                # Simplified layout for mobile compatibility
+                fig_pie.update_layout(
+                    showlegend=True,
+                    margin=dict(t=20, b=20, l=20, r=20),  # Minimal margins
+                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.1),  # Adjusted legend position
+                    height=300  # Fixed height to ensure visibility on mobile
+                )
                 st.plotly_chart(fig_pie, use_container_width=True)
                 top_category = county_complaints.loc[county_complaints["complaint_count"].idxmax(), "Product"]
                 st.write(f"**Top Complaint Category**: {top_category}")
@@ -208,7 +200,7 @@ if not df.empty:
     else:
         st.write("Select a county to see vulnerability ranking.")
 
-    st.subheader("Savings Goal Tracker")
+        st.subheader("Savings Goal Tracker")
     goal = st.number_input("Savings Goal ($)", min_value=0.0, value=5000.0, step=100.0)
     saved = st.number_input("Amount Saved ($)", min_value=0.0, value=1000.0, step=100.0)
     progress = min(saved / goal, 1.0) if goal > 0 else 0.0
