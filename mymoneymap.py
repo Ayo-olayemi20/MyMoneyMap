@@ -199,7 +199,7 @@ if not df.empty:
     else:
         st.write("Select a county to see vulnerability ranking.")
 
-       st.subheader("Savings Goal Tracker")
+    st.subheader("Savings Goal Tracker")
     goal = st.number_input("Savings Goal ($)", min_value=0.0, value=5000.0, step=100.0)
     saved = st.number_input("Amount Saved ($)", min_value=0.0, value=1000.0, step=100.0)
     progress = min(saved / goal, 1.0) if goal > 0 else 0.0
