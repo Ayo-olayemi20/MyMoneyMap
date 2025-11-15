@@ -275,4 +275,4 @@ if "feedback" in st.session_state and st.session_state.feedback:
 
 # Footer
 st.markdown("---")
-st.caption("Built by @_ayoolayemi20 | Empowering financial equity through data | Nov 15, 2025")
+st.caption("Built by @ayo-olayemi20 | Empowering financial equity through data | Nov 15, 2025")
