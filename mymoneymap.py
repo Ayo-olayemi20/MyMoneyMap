@@ -1,4 +1,4 @@
-﻿# mymoneymap.py
+# mymoneymap.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -65,7 +65,7 @@ def shorten_category_name(name):
         "Bank account or service": "Bank Account",
         "Checking or savings account": "Checking/Savings",
         "Credit card": "Credit Card",
-        "Credit card or prepaid card": "Card/Prepaid",
+        "Credit card or prepaid card": "Credit/Prepaid",
         "Credit reporting": "Credit Report",
         "Debt collection": "Debt Collection",
         "Mortgage": "Mortgage"
