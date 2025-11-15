@@ -94,7 +94,7 @@ if not df.empty:
                      hover_data=["county"])
     st.plotly_chart(fig, use_container_width=True)
 
-       # --- Drill-Down (Mobile-Friendly with Legend Below) ---
+      # --- Drill-Down (Mobile-Friendly with Legend Hidden on Mobile) ---
     st.subheader("Localized Complaint Drill-Down")
     if county != "All":
         selected_county = df[df["county"] == county]
@@ -122,18 +122,11 @@ if not df.empty:
                     pull=[0.1 if i == county_complaints["complaint_count"].idxmax() else 0 for i in range(len(county_complaints))],
                     hovertemplate="%{label}: %{value} complaints (%{percent})"
                 )
-                # Layout adjusted for mobile: legend below chart
+                # Layout with legend hidden on mobile (estimated via height)
                 fig_pie.update_layout(
-                    showlegend=True,
-                    margin=dict(t=20, b=40, l=20, r=20),  # Extra bottom margin for legend
-                    legend=dict(
-                        orientation="h",  # Horizontal legend below chart
-                        yanchor="bottom",
-                        y=-0.2,  # Position below chart
-                        xanchor="center",
-                        x=0.5
-                    ),
-                    height=300  # Fixed height to ensure visibility
+                    showlegend=False,  # Default to hidden for mobile compatibility
+                    margin=dict(t=20, b=20, l=20, r=20),  # Minimal margins
+                    height=300  # Fixed height for mobile
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
                 top_category = county_complaints.loc[county_complaints["complaint_count"].idxmax(), "Product"]
@@ -206,7 +199,7 @@ if not df.empty:
     else:
         st.write("Select a county to see vulnerability ranking.")
 
-    st.subheader("Savings Goal Tracker")
+       st.subheader("Savings Goal Tracker")
     goal = st.number_input("Savings Goal ($)", min_value=0.0, value=5000.0, step=100.0)
     saved = st.number_input("Amount Saved ($)", min_value=0.0, value=1000.0, step=100.0)
     progress = min(saved / goal, 1.0) if goal > 0 else 0.0
