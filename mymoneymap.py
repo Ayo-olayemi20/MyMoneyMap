@@ -93,7 +93,7 @@ if not df.empty:
                      hover_data=["county"])
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- Drill-Down ---
+    # --- Drill-Down (Mobile-Friendly) ---
     st.subheader("Localized Complaint Drill-Down")
     if county != "All":
         selected_county = df[df["county"] == county]
@@ -117,17 +117,17 @@ if not df.empty:
                                  color="Product", color_discrete_map=color_map)
                 fig_pie.update_traces(
                     textinfo='percent+label',
-                    textfont_size=14,
+                    textfont_size=12,  # Reduced for mobile readability
                     pull=[0.1 if i == county_complaints["complaint_count"].idxmax() else 0 for i in range(len(county_complaints))],
                     hovertemplate="%{label}: %{value} complaints (%{percent})"
                 )
                 fig_pie.update_layout(
                     showlegend=True,
-                    margin=dict(t=60, b=60, l=60, r=250),
-                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.4),
-                    width=450
+                    margin=dict(t=40, b=40, l=40, r=40),  # Reduced margins
+                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.2),
+                    # Removed fixed width — uses container_width
                 )
-                st.plotly_chart(fig_pie, use_container_width=True)
+                st.plotly_chart(fig_pie, use_container_width=True)  # Dynamic sizing
                 top_category = county_complaints.loc[county_complaints["complaint_count"].idxmax(), "Product"]
                 st.write(f"**Top Complaint Category**: {top_category}")
                 
