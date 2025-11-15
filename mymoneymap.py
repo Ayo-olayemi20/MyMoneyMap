@@ -6,6 +6,7 @@ import sqlite3
 import requests
 import tempfile
 import os
+from streamlit import session_state
 
 # -------------------------------------------------
 # Page config
@@ -75,7 +76,7 @@ if not cfpb_df.empty:
     cfpb_df["Product"] = cfpb_df["Product"].apply(shorten_category_name)
 
 # -------------------------------------------------
-# Main App (unchanged)
+# Main App
 # -------------------------------------------------
 if not df.empty:
     df["state"] = df["county"].str.extract(r",\s*([A-Za-z\s]+)$")
@@ -93,7 +94,7 @@ if not df.empty:
                      hover_data=["county"])
     st.plotly_chart(fig, use_container_width=True)
 
-    # --- Drill-Down (Mobile-Friendly) ---
+    # --- Drill-Down (Mobile-Friendly with Fallback) ---
     st.subheader("Localized Complaint Drill-Down")
     if county != "All":
         selected_county = df[df["county"] == county]
@@ -117,17 +118,26 @@ if not df.empty:
                                  color="Product", color_discrete_map=color_map)
                 fig_pie.update_traces(
                     textinfo='percent+label',
-                    textfont_size=12,  # Reduced for mobile readability
+                    textfont_size=10,  # Further reduced for mobile
                     pull=[0.1 if i == county_complaints["complaint_count"].idxmax() else 0 for i in range(len(county_complaints))],
                     hovertemplate="%{label}: %{value} complaints (%{percent})"
                 )
-                fig_pie.update_layout(
-                    showlegend=True,
-                    margin=dict(t=40, b=40, l=40, r=40),  # Reduced margins
-                    legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.2),
-                    # Removed fixed width — uses container_width
-                )
-                st.plotly_chart(fig_pie, use_container_width=True)  # Dynamic sizing
+                # Mobile detection and layout adjustment
+                user_agent = st.get_option("browser.userAgent")
+                is_mobile = user_agent and any(mobile in user_agent.lower() for mobile in ['mobile', 'android', 'iphone'])
+                if is_mobile:
+                    fig_pie.update_layout(
+                        showlegend=False,  # Hide legend on mobile to save space
+                        margin=dict(t=20, b=20, l=20, r=20),  # Minimal margins
+                        height=300,  # Fixed height for mobile
+                    )
+                else:
+                    fig_pie.update_layout(
+                        showlegend=True,
+                        margin=dict(t=40, b=40, l=40, r=40),
+                        legend=dict(orientation="v", yanchor="top", y=1, xanchor="right", x=1.2),
+                    )
+                st.plotly_chart(fig_pie, use_container_width=True)
                 top_category = county_complaints.loc[county_complaints["complaint_count"].idxmax(), "Product"]
                 st.write(f"**Top Complaint Category**: {top_category}")
                 
@@ -156,10 +166,6 @@ if not df.empty:
             st.write(f"Select a county to see complaint details.")
     else:
         st.write("Select a county to see complaint details.")
-
-    # --- Peers, Ranking, Savings, Budget (unchanged) ---
-    # [All your original code here — unchanged]
-    # (Included below for completeness)
 
     st.subheader("Find Your Financial Peers")
     if county != "All":
@@ -222,11 +228,8 @@ if not df.empty:
     fig_pie = px.pie(values=values, names=categories, title="Spending by Category")
     st.plotly_chart(fig_pie, use_container_width=True)
 
-else:
-    st.warning("No data loaded. Please check the database file.")
-
 # -------------------------------------------------
-# FEEDBACK FORM (NEW!)
+# FEEDBACK FORM
 # -------------------------------------------------
 st.markdown("---")
 st.subheader("Share Your Feedback")
@@ -253,18 +256,17 @@ with st.form("feedback_form"):
             "Timestamp": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M")
         }
         try:
-            # Save to session state (in-memory)
-            if "feedback" not in st.session_state:
-                st.session_state.feedback = []
-            st.session_state.feedback.append(feedback_data)
+            if "feedback" not in session_state:
+                session_state.feedback = []
+            session_state.feedback.append(feedback_data)
             st.success("Thank you! Your feedback has been recorded.")
         except:
             st.error("Could not save feedback. Try again.")
 
 # Show submitted feedback (for demo/NIW proof)
-if "feedback" in st.session_state and st.session_state.feedback:
+if "feedback" in session_state and session_state.feedback:
     with st.expander("View All Feedback (Admin Only)"):
-        feedback_df = pd.DataFrame(st.session_state.feedback)
+        feedback_df = pd.DataFrame(session_state.feedback)
         st.dataframe(feedback_df)
         st.download_button(
             "Download All Feedback (CSV)",
