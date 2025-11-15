@@ -4,7 +4,8 @@ import pandas as pd
 import plotly.express as px
 import sqlite3
 import requests
-from io import BytesIO
+import tempfile
+import os
 
 # Set page configuration
 st.set_page_config(page_title="MyMoneyMap", layout="wide")
@@ -29,13 +30,22 @@ def load_data():
         url = f"https://drive.google.com/uc?export=download&id={DB_FILE_ID}"
         response = requests.get(url)
         response.raise_for_status()
-        db_bytes = BytesIO(response.content)
-        
-        conn = sqlite3.connect(db_bytes)
+
+        # Save to temporary file (required for sqlite3 in Streamlit Cloud)
+        temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+        temp_db.write(response.content)
+        temp_db.close()
+
+        db_path = temp_db.name
+
+        conn = sqlite3.connect(db_path)
         df = pd.read_sql_query("SELECT * FROM financial_data", conn)
         cfpb_df = pd.read_sql_query("SELECT * FROM complaint_categories", conn)
         conn.close()
-        
+
+        # Clean up temp file
+        os.unlink(db_path)
+
         st.success(f"Loaded {len(df):,} counties and {len(cfpb_df):,} complaint records")
         return df, cfpb_df
     except Exception as e:
